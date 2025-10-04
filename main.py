@@ -1,37 +1,40 @@
 import argparse
 import json
 import datetime
-import os
 
 TASKS_PATH = 'tasks.json'
 
-parser = argparse.ArgumentParser(description="A Task Tracker CLI tool made in Python")
 
-subParsers = parser.add_subparsers(dest="command", required=True)
+def setup_parsers():
+    parser = argparse.ArgumentParser(description="A Task Tracker CLI tool made in Python")
+    sub_parsers = parser.add_subparsers(dest="command", required=True)
 
-addParser = subParsers.add_parser("add", help="Add a task")
-addParser.add_argument("description", help="The task to add")
+    # Add parser
+    add_parsers = sub_parsers.add_parser("add", help="Add a task")
+    add_parsers.add_argument("description", help="The task to add")
 
-updateParser = subParsers.add_parser("update", help="Update a task")
-updateParser.add_argument("id", help="The task ID to update")
-updateParser.add_argument("newDescription", help="the new description of the task")
+    # Update parser
+    update_parser = sub_parsers.add_parser("update", help="Update a task")
+    update_parser.add_argument("id", help="The task ID to update", type=int)
+    update_parser.add_argument("newDescription", help="the new description of the task")
 
-deleteParser = subParsers.add_parser("delete", help="Delete a task")
-deleteParser.add_argument("id", help="The task ID to delete")
+    # List parser
+    list_parser = sub_parsers.add_parser("list", help="List all tasks")
+    list_parser.add_argument("type", help="The type of task to list",
+                            choices=['todo', 'in-progress', 'done'], nargs='?')
 
-listParser = subParsers.add_parser("list", help="List all tasks")
-listParser.add_argument("type", help="The type of task to list", choices=['todo', 'in-progress', 'done'], nargs='?')
+    # Helper function for ID-based commands
+    def create_task_id_parser(name, help_text):
+        p = sub_parsers.add_parser(name, help=help_text)
+        p.add_argument("id", help="The task ID", type=int)
+        return p
 
-markInProgress = subParsers.add_parser("mark-in-progress", help="Mark a task in progress")
-markInProgress.add_argument("id", help="The task ID to mark in progress")
+    create_task_id_parser("delete", "Delete a task")
+    create_task_id_parser("mark-in-progress", "Mark a task in progress")
+    create_task_id_parser("mark-done", "Mark a task as done")
+    create_task_id_parser("mark-todo", "Mark a task as todo")
 
-markDone = subParsers.add_parser("mark-done", help="Mark a task in done")
-markDone.add_argument("id", help="The task ID to mark in done")
-
-markToDo = subParsers.add_parser("mark-todo", help="Mark a task to be done")
-markToDo.add_argument("id", help="The task ID to mark todo")
-
-args = parser.parse_args()
+    return parser.parse_args()
 
 
 def load_data():
@@ -64,6 +67,15 @@ def get_task_index(tasks, wanted_id):
     return None
 
 
+def get_task(task_id):
+    data = load_data()
+    task_index = get_task_index(data["tasks"], task_id)
+    if task_index is None:
+        print(f"Task with ID {task_id} not found!")
+        return None, None
+    return data, task_index
+
+
 def now():
     return datetime.datetime.now().isoformat(timespec='seconds')
 
@@ -86,25 +98,24 @@ def add():
 
 
 def update():
-    data = load_data()
-    task_index = get_task_index(data["tasks"], args.id)
-    if task_index is None:
-        print(f"Task with ID {args.id} not found!")
+    data, index = get_task(args.id)
+
+    if data is None:
         return
 
-    data["tasks"][task_index]["description"] = args.newDescription
+    data["tasks"][index]["description"] = args.newDescription
+    data["tasks"][index]["updatedAt"] = now()
     save_data(data)
     print(f"Updated task {args.id}")
 
 
 def delete():
-    data = load_data()
-    task_index = get_task_index(data["tasks"], args.id)
-    if task_index is None:
-        print(f"Task with ID {args.id} not found!")
+    data, index = get_task(args.id)
+
+    if data is None:
         return
 
-    data["tasks"].pop(task_index)
+    data["tasks"].pop(index)
     save_data(data)
     print(f"Deleted task {args.id}")
 
@@ -112,61 +123,47 @@ def delete():
 def list_tasks():
     data = load_data()
     tasks = data["tasks"]
+
     for t in tasks:
-        if args.type == 'todo' and t["status"] == 'todo':
-            print(f"ID: {t["id"]} - {t['description']}")
-        if args.type == 'in-progress' and t["status"] == 'in-progress':
-            print(f"ID: {t["id"]} - {t['description']}")
+        # Show task if no filter specified OR status matches filter
+        if args.type is None or t["status"] == args.type:
+            print(f'ID: {t["id"]} - {t["description"]}')
 
-        if args.type == 'done' and t["status"] == 'done':
-            print(f"ID: {t["id"]} - {t['description']}")
 
-        if args.type is None:
-            print(f"ID: {t["id"]} - {t['description']}")
+def update_status(task_id, new_status):
+    data, index = get_task(args.id)
+    if data is None:
+        return
+
+    data["tasks"][index]["status"] = new_status
+    data["tasks"][index]["updatedAt"] = now()
+    save_data(data)
+    print(f"Task {task_id} marked as {new_status}")
 
 
 def mark_in_progress():
-    data = load_data()
-    task_index = get_task_index(data["tasks"], args.id)
-    if task_index is None:
-        print(f"Task with ID {args.id} not found!")
-        return
-
-    data["tasks"][task_index]["status"] = 'in-progress'
-    save_data(data)
+    update_status(args.id, 'in-progress')
 
 
 def mark_done():
-    data = load_data()
-    task_index = get_task_index(data["tasks"], args.id)
-    if task_index is None:
-        print(f"Task with ID {args.id} not found!")
-        return
-    data["tasks"][task_index]["status"] = 'done'
-    save_data(data)
+    update_status(args.id, 'done')
 
 
 def mark_to_do():
-    data = load_data()
-    task_index = get_task_index(data["tasks"], args.id)
-    if task_index is None:
-        print(f"Task with ID {args.id} not found!")
-        return
-    data["tasks"][task_index]["status"] = 'todo'
-    save_data(data)
+    update_status(args.id, 'todo')
 
 
-if args.command == "add":
-    add()
-elif args.command == "update":
-    update()
-elif args.command == "delete":
-    delete()
-elif args.command == "list":
-    list_tasks()
-elif args.command == "mark-in-progress":
-    mark_in_progress()
-elif args.command == "mark-done":
-    mark_done()
-elif args.command == "mark-todo":
-    mark_to_do()
+COMMANDS = {
+    "add": add,
+    "update": update,
+    "delete": delete,
+    "list": list_tasks,
+    "mark-in-progress": mark_in_progress,
+    "mark-done": mark_done,
+    "mark-todo": mark_to_do,
+}
+
+if __name__ == "__main__":
+    args = setup_parsers()
+    if args.command in COMMANDS:
+        COMMANDS[args.command]()
