@@ -19,6 +19,9 @@ updateParser.add_argument("newDescription", help="the new description of the tas
 deleteParser = subParsers.add_parser("delete", help="Delete a task")
 deleteParser.add_argument("id", help="The task ID to delete")
 
+listParser = subParsers.add_parser("list", help="List all tasks")
+listParser.add_argument("type", help="The type of task to list", choices=['todo', 'in-progress', 'done'], nargs='?')
+
 args = parser.parse_args()
 
 
@@ -82,9 +85,27 @@ def delete():
     save_data(data)
 
 
+def list_tasks():
+    data = load_data()
+    tasks = data["tasks"]
+    for t in tasks:
+        if args.type == 'todo' and t["status"] == 'todo':
+            print(f"ID: {t["id"]} - {t['description']}")
+        if args.type == 'in-progress' and t["status"] == 'in-progress':
+            print(f"ID: {t["id"]} - {t['description']}")
+
+        if args.type == 'done' and t["status"] == 'done':
+            print(f"ID: {t["id"]} - {t['description']}")
+
+        if args.type is None:
+            print(f"ID: {t["id"]} - {t['description']}")
+
+
 if args.command == "add":
     add()
 elif args.command == "update":
     update()
 elif args.command == "delete":
     delete()
+elif args.command == "list":
+    list_tasks()
