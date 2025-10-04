@@ -124,10 +124,20 @@ def list_tasks():
     data = load_data()
     tasks = data["tasks"]
 
-    for t in tasks:
-        # Show task if no filter specified OR status matches filter
-        if args.type is None or t["status"] == args.type:
-            print(f'ID: {t["id"]} - {t["description"]}')
+    if len(tasks) == 0:
+        print("No tasks found")
+        return
+    else:
+
+        print("-" * 100)
+        print(f'{"ID":<4} {"Status":<12} {"Description":<40} {"Created at:":<20} {"Updated at:":<20}')
+        print("-" * 100)
+
+        for t in tasks:
+            # Show task if no filter specified OR status matches filter
+            if args.type is None or t["status"] == args.type:
+                print(f'{t["id"]:<4} {t["status"]:<12} {t["description"]:<40} {t["createdAt"]:<20} {t["updatedAt"]:<20}')
+        print("-" * 100)
 
 
 def update_status(task_id, new_status):
