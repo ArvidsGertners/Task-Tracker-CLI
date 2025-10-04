@@ -16,6 +16,9 @@ updateParser = subParsers.add_parser("update", help="Update a task")
 updateParser.add_argument("id", help="The task ID to update")
 updateParser.add_argument("newDescription", help="the new description of the task")
 
+deleteParser = subParsers.add_parser("delete", help="Delete a task")
+deleteParser.add_argument("id", help="The task ID to delete")
+
 args = parser.parse_args()
 
 
@@ -73,7 +76,15 @@ def update():
     save_data(data)
 
 
+def delete():
+    data = load_data()
+    data["tasks"].pop(get_task_index(data["tasks"], args.id))
+    save_data(data)
+
+
 if args.command == "add":
     add()
 elif args.command == "update":
     update()
+elif args.command == "delete":
+    delete()
