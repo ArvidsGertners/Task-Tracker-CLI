@@ -13,7 +13,7 @@ addParser = subParsers.add_parser("add", help="Add a task")
 addParser.add_argument("description", help="The task to add")
 
 updateParser = subParsers.add_parser("update", help="Update a task")
-updateParser.add_argument("id", help="The task to update")
+updateParser.add_argument("id", help="The task ID to update")
 updateParser.add_argument("newDescription", help="the new description of the task")
 
 args = parser.parse_args()
@@ -39,6 +39,13 @@ def get_new_id(tasks):
     return i
 
 
+def get_task_index(tasks, wanted_id):
+    for t in range(len(tasks)):
+        if tasks[t]["id"] == int(wanted_id):
+            return t
+    return None
+
+
 def now():
     return datetime.datetime.now().isoformat(timespec='seconds')
 
@@ -60,5 +67,13 @@ def add():
     print("Added new task")
 
 
+def update():
+    data = load_data()
+    data["tasks"][get_task_index(data["tasks"], args.id)]["description"] = args.newDescription
+    save_data(data)
+
+
 if args.command == "add":
     add()
+elif args.command == "update":
+    update()
